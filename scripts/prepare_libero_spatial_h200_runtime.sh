@@ -54,11 +54,12 @@ if [[ ! -e "${RUNTIME_ROOT}" ]]; then
   echo "bf40537e2f66d7d9d7393cb5a7b49421cc4b2d5c08b97620a03efaf28fdfda6e  ${VENV_ARCHIVE}" | sha256sum -c -
   mkdir -p "${runtime_partial}"
   tar --zstd -xf "${VENV_ARCHIVE}" -C "${runtime_partial}"
-  test -x "${runtime_partial}/opt/conda/envs/geovla/bin/python"
+  test -L "${runtime_partial}/opt/conda/envs/geovla/bin/python" || \
+    test -x "${runtime_partial}/opt/conda/envs/geovla/bin/python"
   mv -T "${runtime_partial}" "${RUNTIME_ROOT}"
 fi
 VENV_DIR="${RUNTIME_ROOT}/opt/conda/envs/geovla"
-test -x "${VENV_DIR}/bin/python"
+test -L "${VENV_DIR}/bin/python" || test -x "${VENV_DIR}/bin/python"
 
 if [[ ! -e "${LLAMA2_7B_PATH}" ]]; then
   llama_partial="${LLAMA2_7B_PATH}.partial.${SLURM_JOB_ID}"
