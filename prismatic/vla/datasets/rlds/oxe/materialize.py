@@ -73,6 +73,14 @@ def make_oxe_dataset_kwargs(
     if "aux_kwargs" in dataset_kwargs:
         dataset_kwargs.update(dataset_kwargs.pop("aux_kwargs"))
 
+    # Dataset releases may pin a statistics artifact relative to their root.
+    # Resolve it here so the loader does not recompute statistics merely because
+    # the same archive was mounted at a different absolute path.
+    if isinstance(dataset_kwargs.get("dataset_statistics"), str):
+        statistics_path = Path(dataset_kwargs["dataset_statistics"])
+        if not statistics_path.is_absolute():
+            dataset_kwargs["dataset_statistics"] = str(Path(data_root_dir) / statistics_path)
+
     return {"name": dataset_name, "data_dir": str(data_root_dir), **dataset_kwargs}
 
 

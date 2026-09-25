@@ -793,3 +793,11 @@ OXE_DATASET_CONFIGS = {
                     ]
     }, 
 }
+
+# This released RLDS carries statistics computed from all 500 Spatial
+# demonstrations (62,153 transitions). Pin the exact artifact so mounting the
+# same dataset at a different absolute path does not invalidate the cache hash.
+OXE_DATASET_CONFIGS["libero_spatial_state_pc_no_noop"]["dataset_statistics"] = (
+    "libero_spatial_state_pc_no_noop/1.1.0/"
+    "dataset_statistics_4b5bd5cbd9870681dc09abf1e9114b11f8c7e6361643448f1e3375d2cfa70bef.json"
+)

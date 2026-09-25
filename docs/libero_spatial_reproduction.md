@@ -4,6 +4,9 @@ The public RLDS release is available at
 [`yuan1119/libero-spatial-clean-geovla-rlds-v1`](https://huggingface.co/datasets/yuan1119/libero-spatial-clean-geovla-rlds-v1).
 It contains all 10 LIBERO-Spatial tasks, 50 successful demonstrations per
 task, and 62,153 transitions after the OpenVLA no-op filter.
+The dataset config explicitly loads the packaged 500-trajectory statistics
+artifact, so moving or mounting the archive at another absolute path does not
+trigger a full statistics recomputation.
 
 After extracting or mounting the archive, the data root must contain:
 
