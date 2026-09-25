@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "${SCRIPT_DIR}")"
+cd "${REPO_ROOT}"
+
 # Paper-style GeoVLA 3D-MoE fine-tuning on the LIBERO-Spatial-only RLDS
 # release. The original recipe uses 8 GPUs with global batch 256. A single
 # H200 preserves the global batch via gradient accumulation.
