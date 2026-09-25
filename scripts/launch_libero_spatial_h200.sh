@@ -33,6 +33,14 @@ EPOCHS="${EPOCHS:-8}"
 SAVE_INTERVAL="${SAVE_INTERVAL:-250}"
 SAVE_ON_TERMINATE="${SAVE_ON_TERMINATE:-True}"
 
+# The paired H200 NVL devices on Aachen are connected through PCIe (PIX), and
+# the default NCCL P2P/IB path was observed to hang at the first collective.
+# Shared-memory collectives are slower but reliable for this single-node job.
+if (( NUM_GPUS > 1 )); then
+  NCCL_P2P_DISABLE="${NCCL_P2P_DISABLE:-1}"
+  NCCL_IB_DISABLE="${NCCL_IB_DISABLE:-1}"
+fi
+
 test -s "${WANDB_NETRC}"
 test "$(stat -c %a "${WANDB_NETRC}")" = "600"
 test ! -e "${RUN_ROOT_DIR}/${RUN_ID}"
@@ -88,6 +96,12 @@ container_env=(
   "SAVE_ON_TERMINATE=${SAVE_ON_TERMINATE}"
   "TF_CPP_MIN_LOG_LEVEL=2"
 )
+if [[ -n "${NCCL_P2P_DISABLE:-}" ]]; then
+  container_env+=("NCCL_P2P_DISABLE=${NCCL_P2P_DISABLE}")
+fi
+if [[ -n "${NCCL_IB_DISABLE:-}" ]]; then
+  container_env+=("NCCL_IB_DISABLE=${NCCL_IB_DISABLE}")
+fi
 if [[ -n "${MAX_STEPS}" ]]; then
   container_env+=("MAX_STEPS=${MAX_STEPS}")
 fi

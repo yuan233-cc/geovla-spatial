@@ -186,7 +186,7 @@ def train(cfg: TrainConfig) -> None:
             yaml_cfg = yaml.safe_load(f_yaml)
             json.dump(yaml_cfg, f_json, indent=2)
     
-    dist.barrier()
+    dist.barrier(device_ids=[device_id])
     # Load VLA checkpoint (if resuming from training) or Base VLM otherwise (from `cfg.vla.base_vlm` ID or Path)
     #   =>> Note :: Verifies that all parameters are loaded in FP32 on load!
     overwatch.info(f"Loading Base VLM `{cfg.vla.base_vlm}` from ID/Path")
@@ -285,7 +285,7 @@ def train(cfg: TrainConfig) -> None:
     if overwatch.is_rank_zero():
         save_dataset_statistics(vla_dataset.dataset_statistics, run_dir)
     
-    dist.barrier()
+    dist.barrier(device_ids=[device_id])
     # Create Train Strategy
     overwatch.info(f"Initializing Train Strategy `{cfg.train_strategy}`")
     train_strategy = get_train_strategy(
@@ -343,7 +343,7 @@ def train(cfg: TrainConfig) -> None:
 
     # And... we're done!
     overwatch.info("... and that's all, folks!")
-    dist.barrier()
+    dist.barrier(device_ids=[device_id])
     dist.destroy_process_group()
 
 
