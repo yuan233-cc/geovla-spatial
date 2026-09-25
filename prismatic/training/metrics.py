@@ -97,8 +97,9 @@ class WeightsBiasesTracker:
         if overwatch.is_rank_zero():
             wandb.finish()
 
-        # A job gets 210 seconds to get its affairs in order
-        time.sleep(210)
+        # Preserve the upstream grace period by default, while allowing a
+        # cluster launcher to shorten it after synchronous ``wandb.finish``.
+        time.sleep(float(os.environ.get("WANDB_FINISH_WAIT_SECONDS", "210")))
 
 
 # === Core Metrics Container :: Initializes Trackers => Compiles/Pushes Metrics ===

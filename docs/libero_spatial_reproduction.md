@@ -66,3 +66,11 @@ weights and then loads those checkpoint tensors. The LLM load remains strict.
 
 Before a full run, use a separate absent `RUN_ID` and `MAX_STEPS=1` to verify
 one optimizer step, checkpoint writing, W&B initialization, and GPU memory.
+
+For the CAMP H200 workflow, `scripts/prepare_libero_spatial_h200_runtime.sh`
+verifies the exact dataset/model/runtime checksums, publishes the prebuilt
+environment, mounts the ZIP without extraction, and runs the real RLDS loader.
+After that gate passes, run `scripts/launch_libero_spatial_h200.sh` on the host;
+it keeps Enroot in the foreground and places W&B runtime state under job-local
+`/tmp`, while checkpoints remain on Aachen storage. Neither script embeds an
+access token.
