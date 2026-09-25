@@ -8,10 +8,16 @@ set -euo pipefail
 : "${RUN_ID:?Set a unique run ID}"
 : "${WANDB_ENTITY:?Set the verified W&B entity slug}"
 [[ "${SLURM_JOB_ID}" =~ ^[0-9]+$ ]]
-# The cluster SSH wrapper exposes only the allocated GPU through its device
-# cgroup, but a fresh SSH session does not inherit CUDA_VISIBLE_DEVICES from
-# the batch shell. CUDA enumerates that sole visible device as index 0.
-CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
+NUM_GPUS="${NUM_GPUS:-1}"
+if ! [[ "${NUM_GPUS}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "NUM_GPUS must be a positive integer" >&2
+  exit 2
+fi
+# A fresh SSH session into the Slurm job may not inherit CUDA_VISIBLE_DEVICES.
+# The device cgroup exposes exactly the allocated GPUs, re-indexed from zero.
+if [[ -z "${CUDA_VISIBLE_DEVICES:-}" ]]; then
+  CUDA_VISIBLE_DEVICES="$(seq -s, 0 $((NUM_GPUS - 1)))"
+fi
 
 RUNTIME_ENV_FILE="${RUNTIME_ENV_FILE:-/tmp/yuan/geovla_runtime/job-${SLURM_JOB_ID}/runtime.env}"
 test -f "${RUNTIME_ENV_FILE}"
@@ -25,6 +31,7 @@ GLOBAL_BATCH_SIZE="${GLOBAL_BATCH_SIZE:-256}"
 PER_DEVICE_BATCH_SIZE="${PER_DEVICE_BATCH_SIZE:-1}"
 EPOCHS="${EPOCHS:-8}"
 SAVE_INTERVAL="${SAVE_INTERVAL:-250}"
+SAVE_ON_TERMINATE="${SAVE_ON_TERMINATE:-True}"
 
 test -s "${WANDB_NETRC}"
 test "$(stat -c %a "${WANDB_NETRC}")" = "600"
@@ -73,11 +80,12 @@ container_env=(
   "HF_HOME=${HF_HOME}"
   "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}"
   "PYTORCH_CUDA_ALLOC_CONF=${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
-  "NUM_GPUS=1"
+  "NUM_GPUS=${NUM_GPUS}"
   "GLOBAL_BATCH_SIZE=${GLOBAL_BATCH_SIZE}"
   "PER_DEVICE_BATCH_SIZE=${PER_DEVICE_BATCH_SIZE}"
   "EPOCHS=${EPOCHS}"
   "SAVE_INTERVAL=${SAVE_INTERVAL}"
+  "SAVE_ON_TERMINATE=${SAVE_ON_TERMINATE}"
   "TF_CPP_MIN_LOG_LEVEL=2"
 )
 if [[ -n "${MAX_STEPS}" ]]; then

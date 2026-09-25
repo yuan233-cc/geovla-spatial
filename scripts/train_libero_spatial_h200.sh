@@ -6,8 +6,8 @@ REPO_ROOT="$(dirname "${SCRIPT_DIR}")"
 cd "${REPO_ROOT}"
 
 # Paper-style GeoVLA 3D-MoE fine-tuning on the LIBERO-Spatial-only RLDS
-# release. The original recipe uses 8 GPUs with global batch 256. A single
-# H200 preserves the global batch via gradient accumulation.
+# release. The original recipe uses 8 GPUs with global batch 256. This wrapper
+# supports either one or multiple GPUs on a single node.
 
 : "${DATA_ROOT_DIR:?Set DATA_ROOT_DIR to the extracted/mounted RLDS root}"
 : "${PRETRAINED_CHECKPOINT:?Set PRETRAINED_CHECKPOINT to the OpenVLA .pt file}"
@@ -28,6 +28,7 @@ PER_DEVICE_BATCH_SIZE="${PER_DEVICE_BATCH_SIZE:-1}"
 EPOCHS="${EPOCHS:-8}"
 SHUFFLE_BUFFER_SIZE="${SHUFFLE_BUFFER_SIZE:-10000}"
 SAVE_INTERVAL="${SAVE_INTERVAL:-250}"
+SAVE_ON_TERMINATE="${SAVE_ON_TERMINATE:-True}"
 WANDB_PROJECT="${WANDB_PROJECT:-geovla_libero_spatial}"
 DATASET_TRANSITIONS="${DATASET_TRANSITIONS:-62153}"
 MAX_STEPS="${MAX_STEPS:-$(( (DATASET_TRANSITIONS + GLOBAL_BATCH_SIZE - 1) / GLOBAL_BATCH_SIZE * EPOCHS ))}"
@@ -69,6 +70,7 @@ args=(
   --wandb_project "${WANDB_PROJECT}"
   --wandb_entity "${WANDB_ENTITY}"
   --save_interval "${SAVE_INTERVAL}"
+  --save_on_terminate "${SAVE_ON_TERMINATE}"
   --repeated_diffusion_steps 8
   --future_action_window_size 15
   --action_model_type DiT-B

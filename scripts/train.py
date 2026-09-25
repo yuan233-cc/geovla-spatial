@@ -74,6 +74,7 @@ class TrainConfig:
     run_id: Optional[str] = None                                    # Run ID for logging, Weights & Biases
     run_id_note: Optional[str] = None                               # Extra note for logging, Weights & Biases
     save_interval: int = 2500                                       # Interval for saving checkpoints (in steps)
+    save_on_terminate: bool = True                                  # Save when max_steps terminates the run
     image_aug: bool = False                                         # Whether to enable image augmentations
     seed: int = 42                                                  # Random seed (for reproducibility)
 
@@ -332,6 +333,7 @@ def train(cfg: TrainConfig) -> None:
         collator,
         metrics,
         save_interval=cfg.save_interval,
+        save_on_terminate=cfg.save_on_terminate,
         action_model=True,
     )
 

@@ -255,6 +255,7 @@ class TrainingStrategy(ABC):
         collator: PaddedCollatorForActionPrediction,
         metrics: VLAMetrics,
         save_interval: int = 2500,
+        save_on_terminate: bool = True,
         save_full_model: bool = True,
         action_model: bool = True,
     ) -> None:
@@ -366,9 +367,9 @@ class TrainingStrategy(ABC):
                         status = metrics.push()
 
                         # Check for Save Interval or Max Steps & Save Checkpoint
-                        if (terminate := (self.max_steps is not None and metrics.global_step >= self.max_steps)) or (
-                            (metrics.global_step % save_interval) == 0
-                        ):
+                        terminate = self.max_steps is not None and metrics.global_step >= self.max_steps
+                        interval_save = metrics.global_step % save_interval == 0
+                        if interval_save or (terminate and save_on_terminate):
                             self.save_checkpoint(
                                 metrics.run_dir, metrics.global_step, epoch, loss.item(), only_trainable=not save_full_model
                             )
