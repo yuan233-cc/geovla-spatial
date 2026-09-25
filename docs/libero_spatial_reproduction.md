@@ -1,0 +1,51 @@
+# LIBERO-Spatial reproduction
+
+The public RLDS release is available at
+[`yuan1119/libero-spatial-clean-geovla-rlds-v1`](https://huggingface.co/datasets/yuan1119/libero-spatial-clean-geovla-rlds-v1).
+It contains all 10 LIBERO-Spatial tasks, 50 successful demonstrations per
+task, and 62,153 transitions after the OpenVLA no-op filter.
+
+After extracting or mounting the archive, the data root must contain:
+
+```text
+libero_spatial_state_pc_no_noop/1.1.0/
+```
+
+Use the official OpenVLA-Prismatic initialization checkpoint from
+`openvla/openvla-7b-prismatic`:
+
+```text
+config.json
+dataset_statistics.json
+checkpoints/step-295000-epoch-40-loss=0.2200.pt
+```
+
+The Spatial-only launch script is `scripts/train_libero_spatial_h200.sh`.
+Its architecture and semantic parameters follow the repository's LIBERO 3D
+MoE recipe: full point cloud, `dit_condition_self`, DiT-B, MoE enabled,
+`shift_ee` proprioception, 16-action chunks, eight repeated diffusion steps,
+learning rate `2e-5`, and global batch 256. It defaults to eight epochs,
+matching the epoch of the released repository's referenced LIBERO 3D-MoE
+checkpoint.
+
+The original shell recipe assumes 8 GPUs and per-device batch 32. On one H200,
+the launcher defaults to per-device batch 1 and preserves global batch 256 via
+gradient accumulation. This is numerically close but not an exact hardware or
+throughput reproduction.
+
+Required environment variables:
+
+```bash
+export DATA_ROOT_DIR=/path/to/rlds/root
+export PRETRAINED_CHECKPOINT=/path/to/openvla-7b-prismatic/checkpoints/step-295000-epoch-40-loss=0.2200.pt
+export RUN_ROOT_DIR=/persistent/checkpoints
+export RUN_ID=libero-spatial-geovla-3dmoe-seed42
+export WANDB_ENTITY=verified-entity-slug
+export WANDB_PROJECT=geovla_libero_spatial
+export HF_TOKEN=...  # provide through a credential store, never commit it
+
+bash scripts/train_libero_spatial_h200.sh
+```
+
+Before a full run, use a separate absent `RUN_ID` and `MAX_STEPS=1` to verify
+one optimizer step, checkpoint writing, W&B initialization, and GPU memory.

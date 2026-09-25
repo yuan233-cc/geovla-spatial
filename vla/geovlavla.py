@@ -215,6 +215,7 @@ class GeoVLA(nn.Module):
             if "vlm_condition" in self.depth_type:
                 others["pcd_vlm_token"] = depth['ee_feature'].mean(0).permute(1, 0, 2)      # [B, 1, C]
 
+            if "dit_condition" in self.depth_type:
                 pcd_feature = depth['x_adapt']                                # [M, 256, B, C]
                 pcd_pos = depth['pos']                                        # [M, 256, B, 3]
                 pcd_ee_feature = depth['ee_feature']                          # [M, 1, B, C]
