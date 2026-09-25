@@ -573,6 +573,10 @@ def make_interleaved_dataset(
             if "dataset_frame_transform_kwargs" in dataset_kwargs
             else {}
         )
+        # Explicit statistics paths are consumed during the metadata pass above.
+        # The resolved dictionary is passed below, so retaining the path would
+        # supply dataset_statistics twice through **dataset_kwargs.
+        dataset_kwargs.pop("dataset_statistics", None)
         dataset, _ = make_dataset_from_rlds(
             **dataset_kwargs,
             train=train,
