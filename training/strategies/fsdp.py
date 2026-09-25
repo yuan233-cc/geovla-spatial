@@ -254,7 +254,7 @@ class FSDPStrategy(TrainingStrategy):
             groups = [{"params": decay, "weight_decay": self.weight_decay}, {"params": no_decay, "weight_decay": 0.0}]
 
             # Create Optimizer & LR Scheduler
-            self.optimizer = AdamW(groups, lr=self.learning_rate)
+            self.optimizer = AdamW(groups, lr=self.learning_rate, foreach=False)
             self.lr_scheduler = get_cosine_schedule_with_warmup(self.optimizer, num_warmup_steps, num_training_steps)
             for param_group in self.optimizer.param_groups:
                 param_group["lr"] = 0.0
@@ -291,7 +291,10 @@ class FSDPStrategy(TrainingStrategy):
                       {"params": new_module, "weight_decay": 1e-3, "lr": self.learning_rate * 10}]
 
             # Create Optimizer & LR Scheduler
-            self.optimizer = AdamW(groups)
+            # The foreach implementation creates a large temporary tensor list
+            # on the first optimizer step. A full 7B single-H200 run otherwise
+            # peaks within a few hundred MiB of the 140 GiB device limit.
+            self.optimizer = AdamW(groups, foreach=False)
             self.lr_scheduler = get_constant_schedule(self.optimizer)
 
         else:

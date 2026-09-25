@@ -272,11 +272,14 @@ class TrainingStrategy(ABC):
             worker_init_fn=self.worker_init_fn,
         )
 
-        # === Train ===     
+        # === Train ===
         print("start training")
         status = metrics.get_status()
+        optimizer_steps_per_epoch = max(
+            1, (len(vla_dataset) + self.global_batch_size - 1) // self.global_batch_size
+        )
         with tqdm(
-            total=(self.epochs * (len(dataloader) // self.grad_accumulation_steps)) if self.max_steps is None else self.max_steps,
+            total=(self.epochs * optimizer_steps_per_epoch) if self.max_steps is None else self.max_steps,
             desc=status,
             leave=False,
             disable=not overwatch.is_rank_zero(),
@@ -356,7 +359,7 @@ class TrainingStrategy(ABC):
                             update_ema(self.vlm.ema_diffusion, self.vlm.action_model)
                         self.optimizer.zero_grad()
                         # Compute epoch value using number of completed gradient steps
-                        epoch = (metrics.global_step + 1) // (len(vla_dataset) // self.global_batch_size)
+                        epoch = (metrics.global_step + 1) // optimizer_steps_per_epoch
 
                         # Push Metrics
                         metrics.commit(update_step_time=True, global_step=metrics.global_step + 1, epoch=epoch, lr=self.lr_scheduler.get_last_lr()[0])
@@ -374,6 +377,7 @@ class TrainingStrategy(ABC):
                         if terminate:
                             return
 
-                    # Update Progress Bar
-                    progress.update()
-                    progress.set_description(status)
+                        # Progress counts optimizer steps, not accumulation
+                        # micro-batches.
+                        progress.update()
+                        progress.set_description(status)
