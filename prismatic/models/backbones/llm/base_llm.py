@@ -12,6 +12,7 @@ We make this assumption to keep the LLM handling in this codebase relatively lig
 utilities around different types of decoding/generation strategies.
 """
 
+import os
 import warnings
 from abc import ABC, abstractmethod
 from functools import partial
@@ -115,10 +116,11 @@ class HFCausalLLMBackbone(LLMBackbone, ABC):
         self.llm_max_length = llm_max_length
         self.inference_mode = inference_mode
 
-        # my hf has been blocked by meta. I need to use the local path
-        if hf_hub_path == 'meta-llama/Llama-2-7b-hf':
-            hf_hub_path = '/data/model/llama-2-7b-hf'
-            # hf_hub_path = '/mnt/sunl-benchmark/models/llama-2-7b-hf'
+        # The upstream workspace used an author-machine-only `/data/model`
+        # path here. Allow clusters to select a staged Llama directory while
+        # retaining the canonical Hub ID as the portable fallback.
+        if hf_hub_path == "meta-llama/Llama-2-7b-hf":
+            hf_hub_path = os.environ.get("LLAMA2_7B_PATH", hf_hub_path)
 
         # Initialize LLM (downloading from HF Hub if necessary) --> `llm_cls` is the actual {Model}ForCausalLM class!
         #   => Note: We're eschewing use of the AutoModel API so that we can be more explicit about LLM-specific details

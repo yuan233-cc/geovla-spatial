@@ -38,6 +38,7 @@ Required environment variables:
 ```bash
 export DATA_ROOT_DIR=/path/to/rlds/root
 export PRETRAINED_CHECKPOINT=/path/to/openvla-7b-prismatic/checkpoints/step-295000-epoch-40-loss=0.2200.pt
+export LLAMA2_7B_PATH=/path/to/meta-llama/Llama-2-7b-hf
 export RUN_ROOT_DIR=/persistent/checkpoints
 export RUN_ID=libero-spatial-geovla-3dmoe-seed42
 export WANDB_ENTITY=verified-entity-slug
