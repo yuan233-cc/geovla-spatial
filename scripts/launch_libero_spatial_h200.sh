@@ -8,7 +8,10 @@ set -euo pipefail
 : "${RUN_ID:?Set a unique run ID}"
 : "${WANDB_ENTITY:?Set the verified W&B entity slug}"
 [[ "${SLURM_JOB_ID}" =~ ^[0-9]+$ ]]
-: "${CUDA_VISIBLE_DEVICES:?Slurm did not assign a visible GPU}"
+# The cluster SSH wrapper exposes only the allocated GPU through its device
+# cgroup, but a fresh SSH session does not inherit CUDA_VISIBLE_DEVICES from
+# the batch shell. CUDA enumerates that sole visible device as index 0.
+CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 
 RUNTIME_ENV_FILE="${RUNTIME_ENV_FILE:-/tmp/yuan/geovla_runtime/job-${SLURM_JOB_ID}/runtime.env}"
 test -f "${RUNTIME_ENV_FILE}"
