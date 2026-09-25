@@ -20,6 +20,7 @@ SHUFFLE_BUFFER_SIZE="${SHUFFLE_BUFFER_SIZE:-10000}"
 SAVE_INTERVAL="${SAVE_INTERVAL:-250}"
 WANDB_PROJECT="${WANDB_PROJECT:-geovla_libero_spatial}"
 MAX_STEPS="${MAX_STEPS:-}"
+PYTHON_BIN="${PYTHON_BIN:-python}"
 
 DATASET_VERSION_DIR="${DATA_ROOT_DIR}/libero_spatial_state_pc_no_noop/1.1.0"
 test -f "${DATASET_VERSION_DIR}/dataset_info.json"
@@ -71,7 +72,7 @@ if [[ -n "${MAX_STEPS}" ]]; then
   args+=(--vla.max_steps "${MAX_STEPS}")
 fi
 
-exec torchrun \
+exec "${PYTHON_BIN}" -m torch.distributed.run \
   --standalone \
   --nnodes 1 \
   --nproc-per-node "${NUM_GPUS}" \

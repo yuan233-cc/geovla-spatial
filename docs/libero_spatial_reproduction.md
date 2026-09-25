@@ -43,6 +43,7 @@ export RUN_ID=libero-spatial-geovla-3dmoe-seed42
 export WANDB_ENTITY=verified-entity-slug
 export WANDB_PROJECT=geovla_libero_spatial
 export HF_TOKEN=...  # provide through a credential store, never commit it
+export PYTHON_BIN=/path/to/geovla/venv/bin/python
 
 bash scripts/train_libero_spatial_h200.sh
 ```
