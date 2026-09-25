@@ -10,8 +10,13 @@ set -euo pipefail
 : "${RUN_ROOT_DIR:?Set RUN_ROOT_DIR to a persistent output parent}"
 : "${RUN_ID:?Set a unique run name}"
 : "${WANDB_ENTITY:?Set WANDB_ENTITY to the verified W&B entity slug}"
-: "${HF_TOKEN:?Set HF_TOKEN without placing it in this script or its logs}"
 : "${LLAMA2_7B_PATH:?Set LLAMA2_7B_PATH to a staged meta-llama/Llama-2-7b-hf directory}"
+
+# All architecture/tokenizer files and pretrained weights are local for this
+# reproduction.  train.py still resolves its legacy hf_token setting through
+# an environment-variable name, so provide a harmless placeholder when no Hub
+# credential is needed.
+export HF_TOKEN="${HF_TOKEN:-unused-local-assets}"
 
 NUM_GPUS="${NUM_GPUS:-1}"
 GLOBAL_BATCH_SIZE="${GLOBAL_BATCH_SIZE:-256}"
@@ -20,7 +25,8 @@ EPOCHS="${EPOCHS:-8}"
 SHUFFLE_BUFFER_SIZE="${SHUFFLE_BUFFER_SIZE:-10000}"
 SAVE_INTERVAL="${SAVE_INTERVAL:-250}"
 WANDB_PROJECT="${WANDB_PROJECT:-geovla_libero_spatial}"
-MAX_STEPS="${MAX_STEPS:-}"
+DATASET_TRANSITIONS="${DATASET_TRANSITIONS:-62153}"
+MAX_STEPS="${MAX_STEPS:-$(( (DATASET_TRANSITIONS + GLOBAL_BATCH_SIZE - 1) / GLOBAL_BATCH_SIZE * EPOCHS ))}"
 PYTHON_BIN="${PYTHON_BIN:-python}"
 
 DATASET_VERSION_DIR="${DATA_ROOT_DIR}/libero_spatial_state_pc_no_noop/1.1.0"
@@ -71,9 +77,7 @@ args=(
   --wrist_first False
 )
 
-if [[ -n "${MAX_STEPS}" ]]; then
-  args+=(--vla.max_steps "${MAX_STEPS}")
-fi
+args+=(--vla.max_steps "${MAX_STEPS}")
 
 exec "${PYTHON_BIN}" -m torch.distributed.run \
   --standalone \

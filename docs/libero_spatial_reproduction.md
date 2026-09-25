@@ -33,8 +33,15 @@ checkpoint.
 
 The original shell recipe assumes 8 GPUs and per-device batch 32. On one H200,
 the launcher defaults to per-device batch 1 and preserves global batch 256 via
-gradient accumulation. This is numerically close but not an exact hardware or
-throughput reproduction.
+gradient accumulation. The VLA loop in this branch adds accumulation support;
+the original loop rejected any accumulation factor other than one. This is
+numerically close but not an exact hardware or throughput reproduction, and a
+single-GPU run will be much slower than the paper's eight-GPU run.
+
+Because the RLDS input pipeline repeats indefinitely, the launcher converts the
+requested eight epochs into 1,944 optimizer steps using the released dataset's
+62,153 transitions and global batch 256. Set `DATASET_TRANSITIONS` only when
+using a different release. An explicit `MAX_STEPS` still overrides this value.
 
 Required environment variables:
 
@@ -46,7 +53,7 @@ export RUN_ROOT_DIR=/persistent/checkpoints
 export RUN_ID=libero-spatial-geovla-3dmoe-seed42
 export WANDB_ENTITY=verified-entity-slug
 export WANDB_PROJECT=geovla_libero_spatial
-export HF_TOKEN=...  # provide through a credential store, never commit it
+# HF_TOKEN is optional because every required model asset is local.
 export PYTHON_BIN=/path/to/geovla/venv/bin/python
 
 bash scripts/train_libero_spatial_h200.sh

@@ -9,6 +9,7 @@ heavy lifting.
 """
 
 from abc import ABC, abstractmethod
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -253,7 +254,6 @@ class TrainingStrategy(ABC):
     ) -> None:
         """Run the VLA training loop for the given `dataset` and `collator`; log losses, action metrics to `metrics`."""
         assert isinstance(vla_dataset, IterableDataset), "VLA training expects an IterableDataset!"
-        assert self.grad_accumulation_steps == 1, "VLA training does not support gradient accumulation!"
 
         # Create a DataLoader =>> Set `num_workers` to 0; RLDS loader handles parallelism!
         dataloader = DataLoader(
@@ -267,8 +267,11 @@ class TrainingStrategy(ABC):
 
         # === Train ===
         status = metrics.get_status()
+        optimizer_steps_per_epoch = max(
+            1, (len(vla_dataset) + self.global_batch_size - 1) // self.global_batch_size
+        )
         with tqdm(
-            total=(self.epochs * len(dataloader)) if self.max_steps is None else self.max_steps,
+            total=(self.epochs * optimizer_steps_per_epoch) if self.max_steps is None else self.max_steps,
             desc=status,
             leave=False,
             disable=not overwatch.is_rank_zero(),
@@ -281,24 +284,38 @@ class TrainingStrategy(ABC):
             # [Contract] DataLoader wraps RLDS Loader (`.as_numpy_iterator() =>> implicit `.repeat()`)
             #   => This means looping over the DataLoader is basically "infinite" (so no outer loop over epochs).
             #      Slightly breaks default PyTorch semantics, which is why we adaptively compute `epoch` below.
-            for batch in dataloader:
+            for micro_step, batch in enumerate(dataloader, start=1):
+                update_gradients = (micro_step % self.grad_accumulation_steps) == 0
+
                 # Note that we'll unpack batch (and let AMP/FSDP do its thing) in the VLM.forward() call
                 #   => Basically, if we're using mixed precision (or not), autocast()/FSDP will move to device!
-                with torch.autocast(
-                    "cuda", dtype=self.mixed_precision_dtype, enabled=self.enable_mixed_precision_training
-                ):
-                    # [Contract] self.vlm.forward() must automatically compute `loss` and return!
-                    output: CausalLMOutputWithPast = self.vlm(
-                        input_ids=batch["input_ids"],
-                        attention_mask=batch["attention_mask"],
-                        pixel_values=batch["pixel_values"],
-                        labels=batch["labels"],
-                    )
-                    loss = output.loss
+                # Avoid redundant gradient synchronization for intermediate accumulation
+                # micro-batches.  FSDP and DDP both expose ``no_sync``; single-process
+                # strategies simply use a no-op context.
+                sync_context = (
+                    self.vlm.no_sync()
+                    if not update_gradients and overwatch.world_size() > 1 and hasattr(self.vlm, "no_sync")
+                    else nullcontext()
+                )
+                with sync_context:
+                    with torch.autocast(
+                        "cuda", dtype=self.mixed_precision_dtype, enabled=self.enable_mixed_precision_training
+                    ):
+                        # [Contract] self.vlm.forward() must automatically compute `loss` and return!
+                        output: CausalLMOutputWithPast = self.vlm(
+                            input_ids=batch["input_ids"],
+                            attention_mask=batch["attention_mask"],
+                            pixel_values=batch["pixel_values"],
+                            labels=batch["labels"],
+                        )
+                        loss = output.loss
 
-                # Commit Loss =>> Backward!
+                    # Preserve the global-batch gradient scale while accumulating
+                    # per-device micro-batches.
+                    (loss / self.grad_accumulation_steps).backward()
+
+                # Commit the unscaled loss for reporting.
                 metrics.commit(loss=loss)
-                loss.backward()
 
                 # === Compute Action Token Accuracy & L1 Loss ===
 
@@ -329,7 +346,7 @@ class TrainingStrategy(ABC):
                 action_l1_loss = torch.nn.functional.l1_loss(continuous_actions_pred, continuous_actions_gt)
 
                 # Commit Metrics
-                metrics.commit(action_accuracy=action_accuracy, l1_loss=action_l1_loss, update_step_time=True)
+                metrics.commit(action_accuracy=action_accuracy, l1_loss=action_l1_loss)
 
                 # Compute metrics per dataset --> only on rank_zero since we don't log them on other workers anyways
                 if overwatch.is_rank_zero():
@@ -357,6 +374,11 @@ class TrainingStrategy(ABC):
 
                 # === Gradient Step ===
 
+                if not update_gradients:
+                    continue
+
+                metrics.commit(update_step_time=True)
+
                 # Clip Gradients --> this is custom, per-strategy because of DDP vs. FSDP locality assumptions
                 self.clip_grad_norm()
 
@@ -366,7 +388,7 @@ class TrainingStrategy(ABC):
                 self.optimizer.zero_grad()
 
                 # Compute epoch value using number of completed gradient steps
-                epoch = (metrics.global_step + 1) // (len(vla_dataset) // self.global_batch_size)
+                epoch = (metrics.global_step + 1) // optimizer_steps_per_epoch
 
                 # Push Metrics
                 metrics.commit(global_step=metrics.global_step + 1, epoch=epoch, lr=self.lr_scheduler.get_last_lr()[0])

@@ -319,6 +319,8 @@ def train(cfg: TrainConfig) -> None:
         draccus.encode(cfg),
         wandb_project=cfg.wandb_project,
         wandb_entity=cfg.wandb_entity,
+        grad_accumulation_steps=train_strategy.grad_accumulation_steps,
+        window_size=train_strategy.grad_accumulation_steps,
         resume_step=cfg.resume_step,
         resume_epoch=cfg.resume_epoch,
     )
