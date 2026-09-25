@@ -110,6 +110,7 @@ class HFCausalLLMBackbone(LLMBackbone, ABC):
         hf_token: Optional[str] = None,
         inference_mode: bool = False,
         use_flash_attention_2: bool = False,
+        skip_pretrained_weights: bool = False,
     ) -> None:
         super().__init__(llm_backbone_id)
         self.llm_family = llm_family
@@ -124,7 +125,7 @@ class HFCausalLLMBackbone(LLMBackbone, ABC):
 
         # Initialize LLM (downloading from HF Hub if necessary) --> `llm_cls` is the actual {Model}ForCausalLM class!
         #   => Note: We're eschewing use of the AutoModel API so that we can be more explicit about LLM-specific details
-        if not self.inference_mode:
+        if not self.inference_mode and not skip_pretrained_weights:
             overwatch.info(f"Loading [bold]{llm_family}[/] LLM from [underline]`{hf_hub_path}`[/]", ctx_level=1)
             self.llm = llm_cls.from_pretrained(
                 hf_hub_path,
@@ -136,11 +137,19 @@ class HFCausalLLMBackbone(LLMBackbone, ABC):
                 top_p=1.0,
             )
 
-        # [Contract] `inference_mode` means we're loading from a pretrained checkpoint; no need to load base weights!
+        # A complete downstream checkpoint supplies every LLM tensor, so only the
+        # architecture needs to be materialized in inference or checkpoint-init mode.
         else:
-            overwatch.info(f"Building empty [bold]{llm_family}[/] LLM from [underline]`{hf_hub_path}`[/]", ctx_level=1)
+            reason = "inference" if self.inference_mode else "complete VLA checkpoint initialization"
+            overwatch.info(
+                f"Building empty [bold]{llm_family}[/] LLM from [underline]`{hf_hub_path}`[/] for {reason}",
+                ctx_level=1,
+            )
             llm_config = AutoConfig.from_pretrained(hf_hub_path, token=hf_token)
-            self.llm = llm_cls._from_config(llm_config)
+            config_kwargs = {}
+            if use_flash_attention_2 and not self.inference_mode:
+                config_kwargs["attn_implementation"] = "flash_attention_2"
+            self.llm = llm_cls._from_config(llm_config, **config_kwargs)
 
         # Lightweight Handling (with extended explanation) for setting some LLM Parameters
         #   => Set `decoder.use_cache = False` --> incompatible with gradient checkpointing (+ training in general)

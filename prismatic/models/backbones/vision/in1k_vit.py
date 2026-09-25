@@ -13,10 +13,13 @@ IN1K_VISION_BACKBONES = {
 
 
 class IN1KViTBackbone(TimmViTBackbone):
-    def __init__(self, vision_backbone_id: str, image_resize_strategy: str, default_image_size: int = 224) -> None:
+    def __init__(
+        self, vision_backbone_id: str, image_resize_strategy: str, default_image_size: int = 224, pretrained: bool = True
+    ) -> None:
         super().__init__(
             vision_backbone_id,
             IN1K_VISION_BACKBONES[vision_backbone_id],
             image_resize_strategy,
             default_image_size=default_image_size,
+            pretrained=pretrained,
         )

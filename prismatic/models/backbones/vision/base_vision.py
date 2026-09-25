@@ -99,6 +99,7 @@ class TimmViTBackbone(VisionBackbone, ABC):
         image_resize_strategy: str,
         default_image_size: int = 224,
         override_act_layer: Optional[str] = None,
+        pretrained: bool = True,
     ) -> None:
         super().__init__(vision_backbone_id, image_resize_strategy, default_image_size=default_image_size)
         self.timm_path_or_url = timm_path_or_url
@@ -108,12 +109,12 @@ class TimmViTBackbone(VisionBackbone, ABC):
         # Initialize Featurizer (ViT) by downloading from HF / TIMM Hub if necessary
         if self.override_act_layer is None:
             self.featurizer: VisionTransformer = timm.create_model(
-                self.timm_path_or_url, pretrained=True, num_classes=0, img_size=self.default_image_size
+                self.timm_path_or_url, pretrained=pretrained, num_classes=0, img_size=self.default_image_size
             )
         else:
             self.featurizer: VisionTransformer = timm.create_model(
                 self.timm_path_or_url,
-                pretrained=True,
+                pretrained=pretrained,
                 num_classes=0,
                 img_size=self.default_image_size,
                 act_layer=self.override_act_layer,

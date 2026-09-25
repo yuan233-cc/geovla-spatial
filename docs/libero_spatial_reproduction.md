@@ -38,7 +38,7 @@ Required environment variables:
 ```bash
 export DATA_ROOT_DIR=/path/to/rlds/root
 export PRETRAINED_CHECKPOINT=/path/to/openvla-7b-prismatic/checkpoints/step-295000-epoch-40-loss=0.2200.pt
-export LLAMA2_7B_PATH=/path/to/meta-llama/Llama-2-7b-hf
+export LLAMA2_7B_PATH=/path/to/llama2-config-and-tokenizer
 export RUN_ROOT_DIR=/persistent/checkpoints
 export RUN_ID=libero-spatial-geovla-3dmoe-seed42
 export WANDB_ENTITY=verified-entity-slug
@@ -48,6 +48,11 @@ export PYTHON_BIN=/path/to/geovla/venv/bin/python
 
 bash scripts/train_libero_spatial_h200.sh
 ```
+
+`LLAMA2_7B_PATH` only needs the Llama-2 architecture config and tokenizer files.
+The OpenVLA Prismatic checkpoint contains the complete LLM and vision state
+dicts, so the loader constructs both backbones without downloading their base
+weights and then loads those checkpoint tensors. The LLM load remains strict.
 
 Before a full run, use a separate absent `RUN_ID` and `MAX_STEPS=1` to verify
 one optimizer step, checkpoint writing, W&B initialization, and GPU memory.

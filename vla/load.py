@@ -190,6 +190,8 @@ def load_vla(
     vision_backbone, image_transform = get_vision_backbone_and_transform(
         model_cfg.vision_backbone_id,
         model_cfg.image_resize_strategy,
+        # The checkpoint contains a complete, strictly-loaded vision state dict.
+        pretrained=False,
     )
 
     # Load LLM Backbone --> note `inference_mode = True` by default when calling `load()`
@@ -199,6 +201,10 @@ def load_vla(
         llm_max_length=model_cfg.llm_max_length,
         hf_token=hf_token,
         inference_mode=not load_for_training,
+        # The Prismatic checkpoint loaded immediately below contains a complete,
+        # strictly-checked LLM state dict. Constructing from config avoids first
+        # loading the gated base weights only to overwrite every tensor.
+        skip_pretrained_weights=True,
     )
 
     # Load VLM using `from_pretrained` (clobbers HF syntax... eventually should reconcile)
