@@ -124,3 +124,7 @@ def test_vla_gradient_accumulation_steps_once_and_averages_gradients():
     assert metrics.global_step == 1
     assert strategy.clip_calls == 1
     assert strategy.saved_steps == [1]
+
+
+if __name__ == "__main__":
+    test_vla_gradient_accumulation_steps_once_and_averages_gradients()
