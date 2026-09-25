@@ -5,6 +5,7 @@ Utility classes defining a Metrics container and multiple Trackers to enable mod
 endpoints (e.g., JSONL local logs, Weights & Biases).
 """
 
+import os
 import time
 from collections import defaultdict, deque
 from pathlib import Path
@@ -62,7 +63,12 @@ class WeightsBiasesTracker:
         self.run_id, self.run_dir, self.hparams = run_id, run_dir, hparams
 
         # Get W&B-Specific Initialization Parameters
-        self.project, self.entity, self.group, self.wandb_dir = project, entity, group, self.run_dir
+        self.project, self.entity, self.group = project, entity, group
+        # Keep W&B's runtime database/cache on job-local storage when the
+        # launcher provides WANDB_DIR. Checkpoints and JSONL metrics still
+        # remain in run_dir.
+        self.wandb_dir = Path(os.environ.get("WANDB_DIR", self.run_dir))
+        self.wandb_dir.mkdir(parents=True, exist_ok=True)
 
         # Call W&B.init()
         self.initialize()
